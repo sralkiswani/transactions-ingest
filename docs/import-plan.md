@@ -35,6 +35,10 @@ All in `transactions-ingest.Core/Import/`.
 6. Set the run to Succeeded / PartiallyFailed / Failed and `CompletedAt`.
 7. `finally`: if the run is still Running, mark it Failed; release the lock.
 
+`StartedAt` and every business timestamp (`CreatedAt`, `UpdatedAt`, `RevokedAt`, `FinalizedAt`, audit `ChangedAt`) use the run's clock. `CompletedAt` is run bookkeeping and reads the real time when the run ends.
+
+Status changes (Created, Revoked, Reinstated, Finalized) are audit rows with no `FieldName` (D6); field changes are `Updated` rows with `FieldName`, `OldValue`, `NewValue`.
+
 Logging: one warning per source with the ignored count (details at Debug), an error per failed source, guard trips and skipped revocations at error level. Card values are never logged.
 
 ### Counting
@@ -119,6 +123,6 @@ The cutoff is computed in C# and compared against the column; no date arithmetic
 
 ## Implementation steps
 
-1. Pure parts: `RunClock`, `ImportOptions`, `TransactionValidator`, `SnapshotParser`, `ReconciliationPlanner`, `RevocationGuard`, with unit tests.
-2. `PlanApplier`, `Finalizer`, `ImportService`, lock, with SQLite integration tests.
+1. ✅ Pure parts: `RunClock`, `ImportOptions`, `TransactionValidator`, `SnapshotParser`, `ReconciliationPlanner`, `RevocationGuard`, with unit tests.
+2. ✅ `PlanApplier`, `Finalizer`, `ImportService`, lock, with SQLite integration tests.
 3. DI registration, config, `ImportController`, mock sources, API tests.

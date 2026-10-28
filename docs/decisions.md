@@ -14,7 +14,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
   - `CardNumber` is empty, or optional leading asterisks followed by exactly 4 digits (e.g. `1111`, `***1111`); anything else rejects the record. Non-empty values are stored as received; empty is stored as `null`. Card values are never logged.
   - `Amount` may be negative (refunds). More than 2 decimal places is rejected, not rounded.
   - `TransactionTime` more than 5 minutes after the run's `now` is rejected. The tolerance is configurable (`Import:FutureTolerance`, default 5 minutes).
-  - `SourceSystem` is set by the source, not taken from the record; a mismatching record is rejected.
+  - `SourceSystem` is set by the source, not taken from the record. A record with no SourceSystem is accepted; one whose SourceSystem differs from the source's name (exact, case-sensitive comparison, since names come from our own config) is rejected.
 - **Why:** Accept the masked format sources actually send while never storing more than the last 4 digits; avoid hiding source errors; avoid `""`/`null` showing up as changes. A small future tolerance absorbs clock skew without letting far-future rows sit in the mutable window indefinitely.
 
 ## D3 — Statuses and the 24h window (2026-10-28)
@@ -59,7 +59,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D8 — Transaction scope and concurrency (2026-10-28)
 
-- **Decision:** One DB transaction per source; finalization in its own transaction afterwards. The import service in the library acquires an in-memory lock (behind `IImportLock`) and reports "already running" if it is held; the controller only maps that result to 409. Assumption: every caller of the import (the endpoint or a scheduled job) runs in the same process as the API. The service's `finally` releases the lock and marks the `ImportRun` Failed if it is still Running, so an unexpected exception can't leave a run Running forever.
+- **Decision:** One DB transaction per source, implemented as a single `SaveChanges` (rows, audits and the source's result row together); finalization in its own `SaveChanges` afterwards. The import service in the library acquires an in-memory lock (behind `IImportLock`) and reports "already running" if it is held; the controller only maps that result to 409. Assumption: every caller of the import (the endpoint or a scheduled job) runs in the same process as the API. The service's `finally` releases the lock and marks the `ImportRun` Failed if it is still Running, so an unexpected exception can't leave a run Running forever.
 - **Why:** A failing source is isolated, and its revocations only compare against its own complete snapshot. Source keys never overlap, so cross-source atomicity buys nothing. Locking in the service means an in-process scheduled job is serialized with manual imports without any extra code. An in-memory lock can't go stale after a crash.
 - **Alternatives:** One transaction per run (one bad source blocks all); per record (partial snapshot + revocation is unsafe). DB-based lease (needed if the scheduler runs in another process; brings stale-lock handling).
 

@@ -6,7 +6,7 @@ Working rules for Claude in this repo. Keep this file short; update it when the 
 
 - `transactions-ingest.Server/` — ASP.NET Core Web API, .NET 10 (`net10.0`), controllers + OpenAPI, SPA proxy to the client in Development.
 - `transactions-ingest.client/` — Angular 22, NgModule-based (`standalone: false` in schematics), `@angular/build` builders, npm.
-- `transactions-ingest.Core/` — class library: domain entities (`Domain/`), EF Core on SQLite (`Persistence/`: DbContext, D7 converters, migrations), import logic (`Import/`, see `docs/import-plan.md`; step 1 of 3 done: pure parts only).
+- `transactions-ingest.Core/` — class library: domain entities (`Domain/`), EF Core on SQLite (`Persistence/`: DbContext, D7 converters, migrations), import logic (`Import/`, see `docs/import-plan.md`; steps 1-2 of 3 done: pure parts, applier, finalizer, lock, `ImportService`; DI wiring, controller and mock sources pending).
 - `transactions-ingest.Tests/` — xUnit v3 on Microsoft.Testing.Platform (opted in via `global.json`; no VSTest packages, coverage via `Microsoft.Testing.Extensions.CodeCoverage`). Persistence tests use in-memory SQLite + real migrations.
 - `transactions-ingest.slnx` — solution with all four projects (`.esproj` for the client).
 - Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root) and runs `Migrate()` on startup. Client is a bare placeholder; the dev proxy forwards `/api`.

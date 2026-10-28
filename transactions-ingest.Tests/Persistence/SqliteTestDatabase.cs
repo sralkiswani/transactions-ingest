@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using transactions_ingest.Core.Domain;
 using transactions_ingest.Core.Persistence;
 
@@ -25,9 +26,10 @@ public sealed class SqliteTestDatabase : IDisposable
     public SqliteConnection Connection => _connection;
 
     /// <summary>A fresh context with an empty change tracker, so reads hit the database.</summary>
-    public TransactionsDbContext CreateContext() =>
+    public TransactionsDbContext CreateContext(params IInterceptor[] interceptors) =>
         new(new DbContextOptionsBuilder<TransactionsDbContext>()
             .UseSqlite(_connection)
+            .AddInterceptors(interceptors)
             .Options);
 
     public static Transaction NewTransaction(
