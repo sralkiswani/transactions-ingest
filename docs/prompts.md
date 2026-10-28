@@ -183,3 +183,11 @@ Made `docker compose up --build` the one-command start.
 ```text
 Make the README easy for a first-time reader. Add a compose.yaml that serves the Release image on localhost:8080 with a named volume. Open the README with what it does, a Docker-only quick start with one demo edit, and a "Where to look" list of at most 5 links. Verify compose from a clean state.
 ```
+
+## P17 — skip HTTPS redirection without an HTTPS endpoint, clarify quick start
+
+Enabled HTTPS redirection only when the server listens on HTTPS, so the HTTP-only container stops logging a misleading warning.
+
+```text
+The container logs "Failed to determine the https port for redirect". Enable HTTPS redirection only when the server actually has an HTTPS endpoint, without hard-coding an environment check, and test both cases. Also say to run compose from the repository root.
+```

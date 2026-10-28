@@ -101,3 +101,9 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
   - The Visual Studio "Container (Dockerfile)" profile pins host ports with `httpPort: 5291` and `sslPort: 7103` and sets `publishAllPorts: false`, so the Angular dev server's `/api` proxy and the URLs match the other profiles.
 - **Why:** Production behaviour (developer exception page off, no OpenAPI) stays intact in the container while the demo still works out of the box. A missing file outside the container and outside Development still fails its source, as D4 intends. The env vars live in the final stage only, so Visual Studio's fast mode (base stage, project folder mounted at `/app`) keeps using the project folder like `dotnet run`.
 - **Alternatives:** Running the container in Development (exposes developer error pages and OpenAPI). Baking sample files into the image at build time (they would age past the 24h window and be read-only). Putting the paths in `appsettings.Production.json` (would also apply to a non-container Production run, where `/data` may not exist).
+
+## D15 — HTTPS redirection (2026-10-28)
+
+- **Decision:** HTTPS redirection runs only when the server listens on an `https://` address, read from the addresses it actually bound (`HttpsEndpoints`). The bound addresses are known only once the server has started, so this is decided on the first request.
+- **Why:** The Release container and the API-only run serve plain HTTP, where the middleware could only log "Failed to determine the https port for redirect". The https profile and Visual Studio's container (port 8081) still redirect. Reading the bound addresses covers every way an endpoint can be configured (launch profile URLs, `ASPNETCORE_HTTPS_PORTS`, Kestrel config).
+- **Alternatives:** An environment check (ties redirection to the environment name, not to whether HTTPS exists). Removing the middleware (the https profile would stop redirecting).

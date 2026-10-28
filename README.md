@@ -4,11 +4,13 @@ Imports card transaction snapshots from three sources (Store Uptown, Store Downt
 
 ## Quick start
 
-You only need Docker (Docker Desktop on Windows or macOS):
+You only need Docker (Docker Desktop on Windows or macOS). Clone the repository and, from its root folder (where `compose.yaml` is), run:
 
 ```bash
 docker compose up --build
 ```
+
+Run the other `docker compose` commands below from the same folder.
 
 1. Wait for "Now listening on: http://[::]:8080". The first build takes a few minutes.
 2. Open http://localhost:8080 and click **Import**. Ten transactions appear, two of them already Finalized.
@@ -231,7 +233,7 @@ CLAUDE.md                       Working rules for the coding agent
 
 ## Design decisions and assumptions
 
-The full reasoning, with alternatives considered, is in [docs/decisions.md](docs/decisions.md) (D1 to D14). How the import is put together and tested is in [docs/import-plan.md](docs/import-plan.md). In short:
+The full reasoning, with alternatives considered, is in [docs/decisions.md](docs/decisions.md) (D1 to D15). How the import is put together and tested is in [docs/import-plan.md](docs/import-plan.md). In short:
 
 - **Structure (D1):** a thin API; the import, domain and EF Core live in a class library. The import can be reused by a scheduled job without changes. Time comes from an injected `TimeProvider`.
 - **Validation (D2):** text fields are at most 19 characters ("< 20").
@@ -260,6 +262,7 @@ The full reasoning, with alternatives considered, is in [docs/decisions.md](docs
   - the image keeps its database and source files in a writable `/data`;
   - the image builds Angular with Node 24;
   - the Visual Studio container profile uses the same host ports as the other profiles.
+- **HTTPS redirection (D15):** on only when the server listens on HTTPS, so the HTTP-only container doesn't log a misleading warning.
 
 ## Known limitations
 
@@ -319,3 +322,4 @@ The main corrections:
 - **P14 – the real setting, not a guess.** A cold first start took about 160 seconds, past the SPA proxy's 120-second default. The wait was raised to 300 seconds with the property name found in the package (`SpaProxyTimeoutInSeconds`), and checked in the generated `spa.proxy.json`.
 - **P15 – Docker, checked with a real build.** The Visual Studio container profile published the API on random host ports, so the Angular proxy got ECONNREFUSED; the ports are now pinned to 7103 and 5291. The Dockerfile restored before copying Core and installed Node 20, too old for Angular 22; both were fixed. Mock-file generation became a config flag, and the container keeps its data in a writable `/data` folder (D14). The image was then built and run.
 - **P16 – one command to start.** `compose.yaml` serves the Release image on `localhost:8080` with a named volume, and the README opens with a Docker-only quick start and a "Where to look" list. Compose was checked from a clean state.
+- **P17 – a misleading warning.** The HTTP-only container logged "Failed to determine the https port for redirect". HTTPS redirection now runs only when the server actually listens on HTTPS, decided from the addresses it bound rather than from the environment, with tests for both cases (D15).

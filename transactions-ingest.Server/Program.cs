@@ -1,10 +1,12 @@
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using transactions_ingest.Core.Import;
 using transactions_ingest.Core.Import.Mock;
 using transactions_ingest.Core.Persistence;
+using transactions_ingest.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,7 +53,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Redirect to HTTPS only when the server has an HTTPS endpoint. The container and the API-only run serve plain
+// HTTP, where the middleware could only log "Failed to determine the https port for redirect". The bound
+// addresses are known once the server has started, so this is decided on the first request.
+var hasHttpsEndpoint = new Lazy<bool>(() => HttpsEndpoints.Any(app.Services.GetRequiredService<IServer>()));
+app.UseWhen(_ => hasHttpsEndpoint.Value, https => https.UseHttpsRedirection());
 
 app.UseAuthorization();
 
