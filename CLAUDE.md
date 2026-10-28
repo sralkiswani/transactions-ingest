@@ -29,7 +29,7 @@ Run from the repo root unless noted.
 
 | Angular dev server against that API | `cd transactions-ingest.client; $env:ASPNETCORE_URLS='http://localhost:5291'; npm start` | ✅ serves `https://localhost:54423`; `/api` proxied to the API; table loads |
 
-`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts with the API; start it separately as above. `ASPNETCORE_URLS` tells `proxy.conf.js` where the API is. Not yet run: the Visual Studio launch profiles with the SPA proxy.
+`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts with the API; start it separately as above. `ASPNETCORE_URLS` tells `proxy.conf.js` where the API is. The `https` launch profile (`dotnet run --project transactions-ingest.Server --launch-profile https`) starts the API on `https://localhost:7103` and `npm start` via the SPA proxy; `/` redirects to `https://localhost:54423` (verified; a cold first start took ~160s and exceeded the proxy's 120s wait, a warm start 14s).
 
 Dev ports (verified: `http://localhost:5291` and `https://localhost:54423`): API `https://localhost:7103` / `http://localhost:5291`, Angular dev server `https://localhost:54423`.
 
@@ -39,7 +39,6 @@ Dev ports (verified: `http://localhost:5291` and `https://localhost:54423`): API
 - `npm install` warns that install scripts were blocked for `@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract` (npm `allowScripts`). Builds and tests pass regardless.
 - Running with only an `http://` URL logs a warning from `UseHttpsRedirection` ("Failed to determine the https port"). Harmless for the API-only run.
 - EF Core wraps exceptions from value converters in `DbUpdateException`; the D7 guards surface as its `InnerException`.
-- `CHANGELOG.md` files in both projects describe the original template setup (weather, Karma, jest-editor-support).
 - Amounts reach the browser as JSON numbers, so values above ~90 trillion would lose precision in JavaScript (decimal(18,2) allows more).
 - `git` is not on PATH in this shell; use VS's bundled git: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd\git.exe`.
 

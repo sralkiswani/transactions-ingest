@@ -36,6 +36,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
   - If any key is unparseable or duplicated in a snapshot, valid upserts are applied but revocation is skipped for that source this run, and an error is logged.
   - Configurable guard: if a run would revoke more than a set percentage of a source's Active in-window rows, that source fails with no changes. The percentage only applies once there are at least a minimum number of Active in-window rows (candidates); below that the guard does not trip. The guard can be switched off in config. Enabled flag, minimum candidates and percentage all live in `appsettings.json`.
 - **Why:** A failed, truncated or ambiguous snapshot must never look like mass removals.
+- **Tradeoff:** The guard deliberately departs from the ticket's revoke-if-missing rule: a genuine mass removal is held back and the source fails until someone checks it. Setting `Import:RevocationGuard:Enabled` to `false` restores the literal rule.
 
 ## D5 — Idempotency (2026-10-28)
 
