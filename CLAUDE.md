@@ -5,11 +5,11 @@ Working rules for Claude in this repo. Keep this file short; update it when the 
 ## Stack
 
 - `transactions-ingest.Server/` — ASP.NET Core Web API, .NET 10 (`net10.0`), controllers + OpenAPI, SPA proxy to the client in Development.
-- `transactions-ingest.client/` — Angular 22, NgModule-based (`standalone: false` in schematics), `@angular/build` builders, npm.
+- `transactions-ingest.client/` — Angular 22, NgModule-based (`standalone: false` in schematics), `@angular/build` builders, npm, no zone.js (signals). One `App` component (transactions table, filters, paging, import, audit) over `TransactionsApi` (D13).
 - `transactions-ingest.Core/` — class library: domain entities (`Domain/`), EF Core on SQLite (`Persistence/`: DbContext, D7 converters, migrations), import logic (`Import/`, see `docs/import-plan.md`; registered with `AddTransactionsImport`), JSON-file mock sources (`Import/Mock/`).
 - `transactions-ingest.Tests/` — xUnit v3 on Microsoft.Testing.Platform (opted in via `global.json`; no VSTest packages, coverage via `Microsoft.Testing.Extensions.CodeCoverage`). Persistence and import tests use in-memory SQLite + real migrations; API tests use `WebApplicationFactory` with a temp SQLite file and source folder per test.
 - `transactions-ingest.slnx` — solution with all four projects (`.esproj` for the client).
-- Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root), runs `Migrate()` on startup, and in Development generates missing mock source files under `transactions-ingest.Server/data/sources/` (gitignored; delete to reset). API: `POST /api/import`, `GET /api/transactions`, `GET /api/transactions/{id}/audit`. Client is a bare placeholder; the dev proxy forwards `/api`.
+- Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root), runs `Migrate()` on startup, and in Development generates missing mock source files under `transactions-ingest.Server/data/sources/` (gitignored; delete to reset). API: `POST /api/import`, `GET /api/transactions`, `GET /api/transactions/{id}/audit`. The dev proxy forwards `/api`.
 - `dotnet-ef` is a local tool (`dotnet-tools.json`, pinned to the EF Core version).
 
 ## Commands (verified 2026-10-28, Windows / PowerShell)
@@ -27,18 +27,20 @@ Run from the repo root unless noted.
 | Run API only | `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5291'; dotnet run --project transactions-ingest.Server --no-launch-profile` | ✅ applies migrations, creates `transactions-ingest.Server/transactions.db`, generates mock source files, serves `/openapi/v1.json` |
 | Import + list (API running) | `curl -X POST http://localhost:5291/api/import` then `curl "http://localhost:5291/api/transactions?pageSize=10"` | ✅ 200 with run summary; first page newest first |
 
-`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts. Not yet run: the launch profiles with the SPA proxy, and `npm start`.
+| Angular dev server against that API | `cd transactions-ingest.client; $env:ASPNETCORE_URLS='http://localhost:5291'; npm start` | ✅ serves `https://localhost:54423`; `/api` proxied to the API; table loads |
 
-Dev ports (from config; only `http://localhost:5291` verified): API `https://localhost:7103` / `http://localhost:5291`, Angular dev server `https://localhost:54423`.
+`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts with the API; start it separately as above. `ASPNETCORE_URLS` tells `proxy.conf.js` where the API is. Not yet run: the Visual Studio launch profiles with the SPA proxy.
+
+Dev ports (verified: `http://localhost:5291` and `https://localhost:54423`): API `https://localhost:7103` / `http://localhost:5291`, Angular dev server `https://localhost:54423`.
 
 ## Known issues (flagged, not fixed)
 
 - Client tests don't appear in VS Test Explorer. The `.esproj` has no `JavaScriptTestFramework`: VS's Angular adapter is Karma-only, and its Vitest adapter runs plain Vitest without the Angular compiler. Run them with `ng test`.
 - `npm install` warns that install scripts were blocked for `@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract` (npm `allowScripts`). Builds and tests pass regardless.
-- `HttpClientModule` in `app-module.ts` is deprecated in favor of `provideHttpClient()`.
 - Running with only an `http://` URL logs a warning from `UseHttpsRedirection` ("Failed to determine the https port"). Harmless for the API-only run.
 - EF Core wraps exceptions from value converters in `DbUpdateException`; the D7 guards surface as its `InnerException`.
 - `CHANGELOG.md` files in both projects describe the original template setup (weather, Karma, jest-editor-support).
+- Amounts reach the browser as JSON numbers, so values above ~90 trillion would lose precision in JavaScript (decimal(18,2) allows more).
 - `git` is not on PATH in this shell; use VS's bundled git: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd\git.exe`.
 
 ## How we work

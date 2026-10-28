@@ -8,4 +8,14 @@
 - Mocked sources are fine. Stack: ASP.NET 10, EF Core code-first, appsettings.json config, logging, error handling, tests.
 - README with build/run steps, design decisions and assumptions, and AI usage; prompts and design discussions kept as markdown in the repo.
 
+## Sample source data
+
+Each source publishes a JSON array of objects like:
+
+```json
+{"sourceSystem": "Store Uptown", "transactionId": 100001, "cardNumber": "***1111", "locationCode": "UPTOWN", "productName": "Wireless Mouse", "amount": 24.99, "transactionTime": "2026-02-27T08:15:30Z"}
+```
+
+The other two sources are `Store Downtown` / `DOWNTOWN` and `Online` / `ONLINE`.
+
 Design decisions live in [decisions.md](decisions.md).

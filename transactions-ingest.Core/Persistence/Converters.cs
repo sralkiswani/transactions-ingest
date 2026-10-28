@@ -21,7 +21,8 @@ public sealed class DecimalToCentsConverter() : ValueConverter<decimal, long>(
         return (long)cents;
     }
 
-    public static decimal FromCents(long cents) => cents / 100m;
+    // Multiplying by 0.01m keeps scale 2, so 1850 reads back as 18.50 (not 18.5) and serializes that way.
+    public static decimal FromCents(long cents) => cents * 0.01m;
 }
 
 /// <summary>

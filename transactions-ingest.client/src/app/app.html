@@ -1,1 +1,163 @@
-﻿<h1>{{ title() }}</h1>
+﻿<header class="toolbar">
+  <h1>{{ title() }}</h1>
+  <button type="button" class="primary" data-test="import" (click)="runImport()" [disabled]="importing()">
+    {{ importing() ? 'Importing…' : 'Import' }}
+  </button>
+</header>
+
+@if (importOutcome(); as outcome) {
+  <section class="notice" [class.warning]="outcome.kind !== 'success'" data-test="import-outcome" aria-live="polite">
+    @if (outcome.kind === 'success') {
+      <p>
+        Import run {{ outcome.summary.runId }}: <strong>{{ outcome.summary.status }}</strong>,
+        {{ outcome.summary.finalized }} finalized.
+      </p>
+      <div class="scroll">
+        <table class="summary">
+          <thead>
+            <tr>
+              <th>Source</th><th>Status</th><th>Fetched</th><th>Inserted</th><th>Updated</th>
+              <th>Revoked</th><th>Reinstated</th><th>Rejected</th><th>Ignored</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of outcome.summary.sources; track s.sourceSystem) {
+              <tr>
+                <td>{{ s.sourceSystem }}</td>
+                <td>
+                  {{ s.status }}
+                  @if (s.error) { <span class="muted">— {{ s.error }}</span> }
+                  @if (s.revocationSkipped) { <span class="muted">— revocation skipped</span> }
+                </td>
+                <td>{{ s.fetched }}</td><td>{{ s.inserted }}</td><td>{{ s.updated }}</td>
+                <td>{{ s.revoked }}</td><td>{{ s.reinstated }}</td><td>{{ s.rejected }}</td><td>{{ s.ignored }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <p>{{ outcome.message }}</p>
+    }
+    <button type="button" class="link" (click)="importOutcome.set(null)">Dismiss</button>
+  </section>
+}
+
+<section class="filters">
+  <label>
+    Source
+    <select #sourceSelect data-test="source" (change)="setSource(sourceSelect.value)">
+      <option value="" [selected]="source() === ''">All</option>
+      @for (s of sources; track s) {
+        <option [value]="s" [selected]="source() === s">{{ s }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    Status
+    <select #statusSelect data-test="status" (change)="setStatus(statusSelect.value)">
+      <option value="" [selected]="status() === ''">All</option>
+      @for (s of statuses; track s) {
+        <option [value]="s" [selected]="status() === s">{{ s }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    Per page
+    <select #sizeSelect data-test="page-size" (change)="setPageSize(sizeSelect.value)">
+      @for (size of pageSizes; track size) {
+        <option [value]="size" [selected]="pageSize() === size">{{ size }}</option>
+      }
+    </select>
+  </label>
+</section>
+
+@if (loadError(); as error) {
+  <div class="state error" data-test="load-error" role="alert">
+    {{ error }}
+    <button type="button" data-test="retry" (click)="load()">Retry</button>
+  </div>
+} @else if (loading() && !result()) {
+  <div class="state" data-test="loading">Loading transactions…</div>
+} @else if (result(); as page) {
+  @if (page.items.length === 0) {
+    <div class="state" data-test="empty">No transactions match. Run an import or change the filters.</div>
+  } @else {
+    <table class="transactions" [class.stale]="loading()" [attr.aria-busy]="loading()">
+      <thead>
+        <tr>
+          <th>Source System</th>
+          <th>Transaction ID</th>
+          <th>Location Code</th>
+          <th>Product Name</th>
+          <th class="num">Amount</th>
+          <th>Transaction Time (UTC)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of page.items; track t.id) {
+          <tr
+            data-test="row"
+            tabindex="0"
+            [class.selected]="selected()?.id === t.id"
+            (click)="select(t)"
+            (keydown.enter)="select(t)"
+          >
+            <td data-label="Source System">{{ t.sourceSystem }}</td>
+            <td data-label="Transaction ID">{{ t.transactionId }}</td>
+            <td data-label="Location Code">{{ t.locationCode }}</td>
+            <td data-label="Product Name">{{ t.productName }}</td>
+            <td data-label="Amount" class="num">{{ t.amount | number: '1.2-2' }}</td>
+            <td data-label="Transaction Time (UTC)">{{ t.transactionTime | date: 'yyyy-MM-dd HH:mm:ss' : 'UTC' }}</td>
+            <td data-label="Status"><span class="status" [attr.data-status]="t.status">{{ t.status }}</span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <nav class="pager" aria-label="Pages">
+    <button type="button" data-test="prev" (click)="goTo(page.page - 1)" [disabled]="page.page <= 1 || loading()">Previous</button>
+    <span data-test="page-info">Page {{ page.page }} of {{ totalPages() }} · {{ page.totalCount }} total</span>
+    <button type="button" data-test="next" (click)="goTo(page.page + 1)" [disabled]="page.page >= totalPages() || loading()">Next</button>
+  </nav>
+}
+
+@if (selected(); as t) {
+  <section class="audit" data-test="audit" aria-label="Audit history">
+    <header class="toolbar">
+      <h2>Audit: {{ t.sourceSystem }} #{{ t.transactionId }}</h2>
+      <button type="button" class="link" data-test="close-audit" (click)="closeAudit()">Close</button>
+    </header>
+    @if (auditLoading()) {
+      <div class="state">Loading audit history…</div>
+    } @else if (auditError(); as error) {
+      <div class="state error" role="alert">{{ error }}</div>
+    } @else if (audit(); as entries) {
+      @if (entries.length === 0) {
+        <div class="state">No audit entries.</div>
+      } @else {
+        <div class="scroll">
+          <table class="summary">
+            <thead>
+              <tr><th>Changed (UTC)</th><th>Change</th><th>Field</th><th>Old</th><th>New</th><th>Run</th></tr>
+            </thead>
+            <tbody>
+              @for (a of entries; track $index) {
+                <tr data-test="audit-entry">
+                  <td>{{ a.changedAt | date: 'yyyy-MM-dd HH:mm:ss' : 'UTC' }}</td>
+                  <td>{{ a.changeType }}</td>
+                  <td>{{ a.fieldName ?? '' }}</td>
+                  <td>{{ a.oldValue ?? '' }}</td>
+                  <td>{{ a.newValue ?? '' }}</td>
+                  <td>{{ a.importRunId }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </section>
+}

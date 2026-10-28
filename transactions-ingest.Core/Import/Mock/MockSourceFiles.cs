@@ -55,45 +55,55 @@ public sealed class MockSourceFiles(
             {
                 continue;
             }
-            File.WriteAllText(path, JsonSerializer.Serialize(SampleRecords(index, anchor), WriteOptions));
+            File.WriteAllText(path, JsonSerializer.Serialize(SampleRecords(name, index, anchor), WriteOptions));
             logger.LogInformation("Generated mock source file for {Source} at {Path}.", name, path);
         }
     }
 
     /// <summary>
-    /// Sample data per source position. Covers a card-less payment, a refund, rows older than 24h (finalized
-    /// on the first import), and TransactionId 1001 used by two sources.
+    /// Sample data in the ticket's shape (docs/ticket.md), chosen by the source's position in config. Covers a
+    /// card-less payment, a refund, rows older than 24h (finalized on the first import), and TransactionId
+    /// 100001 used by two sources.
     /// </summary>
-    private static List<SampleRecord> SampleRecords(int sourceIndex, DateTime anchor)
+    private static List<SampleRecord> SampleRecords(string sourceSystem, int sourceIndex, DateTime anchor)
     {
-        SampleRecord R(int id, string card, string location, string product, decimal amount, double hoursAgo) =>
-            new(id, card, location, product, amount,
+        // The ticket's location codes are the source name's last word in capitals: Store Uptown → UPTOWN.
+        var location = sourceSystem.Split(' ', StringSplitOptions.RemoveEmptyEntries).Last().ToUpperInvariant();
+
+        SampleRecord R(int id, string card, string product, decimal amount, double hoursAgo) =>
+            new(sourceSystem, id, card, location, product, amount,
                 anchor.AddHours(-hoursAgo).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
 
         return (sourceIndex % 3) switch
         {
             0 =>
             [
-                R(1001, "***1111", "UPT-01", "Coffee Beans", 18.50m, 1),
-                R(1002, "***2222", "UPT-01", "Espresso Cup", 4.25m, 3),
-                R(1003, "***3333", "UPT-02", "Gift Card", 25.00m, 6),
-                R(1004, "***4444", "UPT-02", "Travel Mug", 12.99m, 30),
+                R(100001, "***1111", "Wireless Mouse", 24.99m, 1),
+                R(100002, "***2222", "USB-C Cable", 9.50m, 3),
+                R(100003, "***3333", "Gift Card", 25.00m, 6),
+                R(100004, "***4444", "Laptop Stand", 39.99m, 30),
             ],
             1 =>
             [
-                R(2001, "***5555", "DTN-01", "Notebook", 7.80m, 2),
-                R(2002, "", "DTN-01", "Newspaper", 2.50m, 4),
-                R(2003, "***6666", "DTN-02", "Pen Set", 15.00m, 26),
+                R(200001, "***5555", "Notebook", 7.80m, 2),
+                R(200002, "", "Newspaper", 2.50m, 4),
+                R(200003, "***6666", "Desk Lamp", 18.50m, 26),
             ],
             _ =>
             [
-                R(1001, "***7777", "WEB", "E-Book", 9.99m, 1.5),
-                R(3002, "***8888", "WEB", "Headphones", 59.90m, 5),
-                R(3003, "***8888", "WEB", "Headphones Refund", -59.90m, 2),
+                R(100001, "***7777", "E-Book", 9.99m, 1.5),
+                R(300002, "***8888", "Headphones", 59.90m, 5),
+                R(300003, "***8888", "Headphones Refund", -59.90m, 2),
             ],
         };
     }
 
     private sealed record SampleRecord(
-        int TransactionId, string CardNumber, string LocationCode, string ProductName, decimal Amount, string TransactionTime);
+        string SourceSystem,
+        int TransactionId,
+        string CardNumber,
+        string LocationCode,
+        string ProductName,
+        decimal Amount,
+        string TransactionTime);
 }

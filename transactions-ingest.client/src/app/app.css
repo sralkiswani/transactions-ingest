@@ -1,5 +1,236 @@
 ﻿:host {
-    max-width: 1280px;
-    padding: 2rem;
-    text-align: center;
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #8a8f98;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: #1f5fbf;
+  border-color: #1f5fbf;
+  color: #fff;
+}
+
+button.link {
+  border: none;
+  background: none;
+  color: #1f5fbf;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.notice {
+  border: 1px solid #9cc79c;
+  background: #f1f8f1;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.notice.warning {
+  border-color: #e0b252;
+  background: #fdf6e7;
+}
+
+.notice p {
+  margin: 0 0 0.5rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  gap: 0.25rem;
+}
+
+select {
+  font: inherit;
+  padding: 0.3rem;
+  min-width: 9rem;
+}
+
+.state {
+  padding: 1.5rem;
+  text-align: center;
+  color: #555;
+  border: 1px dashed #c4c8cf;
+  border-radius: 4px;
+}
+
+.state.error {
+  color: #a1260d;
+  border-color: #e5a594;
+}
+
+.state.error button {
+  margin-left: 0.5rem;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #e3e5e8;
+  white-space: nowrap;
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #555;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.transactions tbody tr {
+  cursor: pointer;
+}
+
+.transactions tbody tr:hover,
+.transactions tbody tr:focus {
+  background: #f3f6fb;
+  outline: none;
+}
+
+.transactions tbody tr.selected {
+  background: #e3ecfa;
+}
+
+.transactions.stale {
+  opacity: 0.6;
+}
+
+.status {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: #e3f2e3;
+}
+
+.status[data-status='Revoked'] {
+  background: #fbe3dd;
+}
+
+.status[data-status='Finalized'] {
+  background: #e6e8ec;
+}
+
+.muted {
+  color: #666;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.audit {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid #e3e5e8;
+}
+
+/* Narrow screens: each transaction becomes a labelled card instead of a wide row. */
+@media (max-width: 640px) {
+  .transactions thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .transactions,
+  .transactions tbody,
+  .transactions tr,
+  .transactions td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .transactions tr {
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+  }
+
+  .transactions td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: none;
+    white-space: normal;
+  }
+
+  .transactions td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #555;
+  }
+
+  .transactions td.num {
+    text-align: left;
+  }
+
+  .pager {
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
 }

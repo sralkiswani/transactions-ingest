@@ -53,7 +53,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D7 — SQLite type mapping (2026-10-28)
 
-- **Decision:** `Amount` stored as `long` cents via a value converter. All `DateTime` values go through one convention: reject non-UTC on write, mark UTC on read; default TEXT storage.
+- **Decision:** `Amount` stored as `long` cents via a value converter, read back with scale 2 (`cents * 0.01m`), so the API always returns two decimals (`18.50`, not `18.5`). All `DateTime` values go through one convention: reject non-UTC on write, mark UTC on read; default TEXT storage.
 - **Why:** EF Core cannot sort or compare `decimal` (and `DateTimeOffset`) on SQLite; default decimal-as-TEXT sorts wrongly; `double` loses precision.
 - **Alternatives:** `double` (lossy); `DateTime` as ticks (sorts fine, unreadable in a DB browser).
 
@@ -71,7 +71,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D10 — Mock sources (2026-10-28)
 
-- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock. JSON numbers are mapped to `RawTransaction` strings from the raw JSON text, never through `double`. File shape: a JSON array of objects with the ticket's field names (property names matched case-insensitively; unknown properties ignored). Sources and the folder come from `Import:MockSources` (`Names`, `Directory`); file name is a slug of the source name (`Store Uptown` → `store-uptown.json`). Generated files live under `transactions-ingest.Server/data/` and are gitignored. A missing file outside Development makes that source fail.
+- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock. JSON numbers are mapped to `RawTransaction` strings from the raw JSON text, never through `double`. File shape: the ticket's sample (docs/ticket.md), a JSON array of objects with `sourceSystem` on every record and the ticket's field names (property names matched case-insensitively; unknown properties ignored). Generated files use the ticket's location codes (`UPTOWN`, `DOWNTOWN`, `ONLINE`: the source name's last word in capitals). Sources and the folder come from `Import:MockSources` (`Names`, `Directory`); file name is a slug of the source name (`Store Uptown` → `store-uptown.json`). Generated files live under `transactions-ingest.Server/data/` and are gitignored. A missing file outside Development makes that source fail.
 - **Why:** Timestamps never shift between runs, so imports stay idempotent. Editing the files demos revocation and corrections; deleting them resets.
 
 ## D11 — API shape (2026-10-28)
@@ -84,3 +84,9 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 - **Decision:** xunit.v3 on Microsoft.Testing.Platform (MTP), opted in via `test.runner` in `global.json`. Run with `dotnet test --solution transactions-ingest.slnx`. Plain xUnit asserts; no FluentAssertions. The test project references only `xunit.v3` and `Microsoft.Testing.Extensions.CodeCoverage`, sets `OutputType=Exe`, and has no VSTest packages (`Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio`, `coverlet.collector`). Coverage: `--coverage`.
 - **Why:** New project; xUnit v2 is maintenance-only. On the .NET 10 SDK, xunit.v3 4.x requires the MTP opt-in. xunit.v3 brings MTP itself; the VSTest packages were unused, and `coverlet.collector` is a VSTest collector that does not run under MTP (`--coverage` failed with it). FluentAssertions v8 changed its license.
 - **Alternatives:** xUnit v2 on VSTest (template default, no `global.json`, but a dead-end version). `coverlet.MTP` for coverage (also works; Microsoft's extension chosen as first-party and VS-integrated).
+
+## D13 — Frontend (2026-10-28)
+
+- **Decision:** One NgModule-declared `App` component (template style kept), `provideHttpClient()` instead of the deprecated `HttpClientModule`, signals for all state (the app runs without zone.js), a thin `TransactionsApi` service. No UI library; plain CSS with a card layout under 640px. Paging and filters go to the API; a filter change returns to page 1, and a newer list request cancels an older one. Times shown with `DatePipe` in UTC and labelled "(UTC)"; amounts with `DecimalPipe` `1.2-2`. The source filter options are the ticket's three names, hard-coded in the client (the API has no sources endpoint). Import shows the run summary, or the ProblemDetails title/detail on 409 and other errors, then reloads the table. Clicking (or Enter on) a row loads its audit history below the table.
+- **Why:** Small app; one component keeps it readable. Signals make change detection explicit without zone.js.
+- **Alternatives:** Separate table/audit components (more files for little gain now); a sources endpoint (worth adding if sources become dynamic).

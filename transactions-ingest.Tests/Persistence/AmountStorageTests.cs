@@ -30,6 +30,26 @@ public class AmountStorageTests
         }
     }
 
+    [Theory]
+    [InlineData("18.5", "18.50")]
+    [InlineData("25", "25.00")]
+    [InlineData("-59.9", "-59.90")]
+    [InlineData("0", "0.00")]
+    public void Amount_reads_back_with_two_decimals(string written, string expected)
+    {
+        using var db = new SqliteTestDatabase();
+        using (var context = db.CreateContext())
+        {
+            context.Transactions.Add(SqliteTestDatabase.NewTransaction(amount: decimal.Parse(written, System.Globalization.CultureInfo.InvariantCulture)));
+            context.SaveChanges();
+        }
+
+        using (var context = db.CreateContext())
+        {
+            Assert.Equal(expected, context.Transactions.Single().Amount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+    }
+
     [Fact]
     public void Amount_is_stored_as_integer_cents()
     {

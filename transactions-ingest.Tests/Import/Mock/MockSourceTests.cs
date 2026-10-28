@@ -98,7 +98,25 @@ public sealed class MockSourceTests : IDisposable
         Assert.Contains(all, t => t.CardNumber is null);
         Assert.Contains(all, t => t.Amount < 0);
         Assert.Contains(all, t => !Clock().IsMutable(t.TransactionTime));
-        Assert.True(parsed["Store Uptown"].Valid.ContainsKey(1001) && parsed["Online"].Valid.ContainsKey(1001));
+        Assert.True(parsed["Store Uptown"].Valid.ContainsKey(100001) && parsed["Online"].Valid.ContainsKey(100001));
+    }
+
+    [Fact]
+    public async Task Generated_files_match_the_ticket_sample_shape()
+    {
+        var files = Files(out _);
+
+        files.EnsureGenerated();
+
+        foreach (var (name, location) in new[] { ("Store Uptown", "UPTOWN"), ("Store Downtown", "DOWNTOWN"), ("Online", "ONLINE") })
+        {
+            var records = await new JsonFileTransactionSource(name, files.PathFor(name)).FetchAsync(Ct);
+            Assert.All(records, r =>
+            {
+                Assert.Equal(name, r.SourceSystem);
+                Assert.Equal(location, r.LocationCode);
+            });
+        }
     }
 
     [Fact]

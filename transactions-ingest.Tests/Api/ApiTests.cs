@@ -28,10 +28,25 @@ public class ApiTests
         Assert.Equal(summary.Sources.Sum(s => s.Inserted), page.TotalCount);
         Assert.Equal(page.Items.OrderByDescending(t => t.TransactionTime).Select(t => t.Id), page.Items.Select(t => t.Id));
         // Same TransactionId in two sources is two rows.
-        Assert.Equal(["Online", "Store Uptown"], page.Items.Where(t => t.TransactionId == 1001).Select(t => t.SourceSystem).Order());
+        Assert.Equal(["Online", "Store Uptown"], page.Items.Where(t => t.TransactionId == 100001).Select(t => t.SourceSystem).Order());
         // Rows older than 24h are finalized on the first import.
         Assert.Equal(summary.Finalized, page.Items.Count(t => t.Status == TransactionStatus.Finalized));
         Assert.True(summary.Finalized > 0);
+    }
+
+    [Fact]
+    public async Task Amounts_are_returned_with_two_decimals()
+    {
+        using var factory = new ApiFactory();
+        var client = factory.CreateClient();
+        await ImportAsync(client);
+
+        var json = await client.GetStringAsync("/api/transactions?pageSize=100", Ct);
+
+        Assert.Contains("\"amount\":24.99,", json);
+        Assert.Contains("\"amount\":18.50,", json);
+        Assert.Contains("\"amount\":-59.90,", json);
+        Assert.Contains("\"amount\":25.00,", json);
     }
 
     [Fact]
