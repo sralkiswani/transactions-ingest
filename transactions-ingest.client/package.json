@@ -21,9 +21,7 @@
     "@angular/platform-browser": "^22.2.0",
     "@angular/router": "^22.2.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
-    "jest-editor-support": "*",
-    "run-script-os": "*"
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^22.2.4",
@@ -31,6 +29,7 @@
     "@angular/compiler-cli": "^22.2.0",
     "jsdom": "^30.0.0",
     "prettier": "^3.8.1",
+    "run-script-os": "1.1.6",
     "typescript": "~6.0.2",
     "vitest": "^5.0.0"
   }

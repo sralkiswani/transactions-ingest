@@ -7,7 +7,7 @@ Working rules for Claude in this repo. Keep this file short; update it when the 
 - `transactions-ingest.Server/` — ASP.NET Core Web API, .NET 10 (`net10.0`), controllers + OpenAPI, SPA proxy to the client in Development.
 - `transactions-ingest.client/` — Angular 22, NgModule-based (`standalone: false` in schematics), `@angular/build` builders, npm.
 - `transactions-ingest.slnx` — solution containing both projects (`.esproj` for the client).
-- Still the WeatherForecast template sample. No .NET test project yet.
+- Template sample removed; the app component is a bare placeholder. The dev proxy forwards `/api`. No .NET test project yet.
 
 ## Commands (verified 2026-10-28, Windows / PowerShell)
 
@@ -17,19 +17,19 @@ Run from the repo root unless noted.
 |---|---|---|
 | Build solution | `dotnet build transactions-ingest.slnx` | ✅ passes |
 | Build client | `cd transactions-ingest.client; npm run build` | ✅ passes |
-| Client tests | `cd transactions-ingest.client; npx ng test --watch=false` | ❌ broken in template (see below) |
+| Client tests (Vitest + jsdom) | `cd transactions-ingest.client; npx ng test --watch=false` | ✅ passes (~1 min, mostly jsdom startup) |
 | .NET tests | — | none exist yet |
 
 Not yet run: `dotnet run` / `npm start` (dev server with SPA proxy). Add here once verified.
 
 Dev ports (from config, not verified): API `https://localhost:7103` / `http://localhost:5291`, Angular dev server `https://localhost:54423`.
 
-## Known template issues (flagged, not fixed)
+## Known issues (flagged, not fixed)
 
-- `angular.json` test target uses `@angular/build:unit-test` (Vitest) but passes `karmaConfig` → schema validation fails, tests don't run.
-- `karma.conf.js` references Karma/Jasmine packages that aren't installed; `package.json` has Vitest + jsdom instead. `.esproj` says `JavaScriptTestFramework=Jasmine`.
-- `src/app/app.spec.ts` ends with `};` instead of `});` — syntax error.
-- `package.json` lists `jest-editor-support` and `run-script-os` as runtime deps with `*` versions.
+- Client tests don't appear in VS Test Explorer. The `.esproj` has no `JavaScriptTestFramework`: VS's Angular adapter is Karma-only, and its Vitest adapter runs plain Vitest without the Angular compiler. Run them with `ng test`.
+- `npm install` warns that install scripts were blocked for `@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract` (npm `allowScripts`). Builds and tests pass regardless.
+- `HttpClientModule` in `app-module.ts` is deprecated in favor of `provideHttpClient()`.
+- `CHANGELOG.md` files in both projects describe the original template setup (weather, Karma, jest-editor-support).
 - `git` is not on PATH in this shell; use VS's bundled git: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd\git.exe`.
 
 ## How we work

@@ -1,6 +1,1 @@
 @transactions_ingest.Server_HostAddress = http://localhost:5291
-
-GET {{transactions_ingest.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
