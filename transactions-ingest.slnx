@@ -3,5 +3,7 @@
     <Build />
     <Deploy />
   </Project>
+  <Project Path="transactions-ingest.Core/transactions-ingest.Core.csproj" />
   <Project Path="transactions-ingest.Server/transactions-ingest.Server.csproj" />
+  <Project Path="transactions-ingest.Tests/transactions-ingest.Tests.csproj" />
 </Solution>

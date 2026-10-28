@@ -24,6 +24,7 @@
     <ProjectReference Include="..\transactions-ingest.client\transactions-ingest.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+    <ProjectReference Include="..\transactions-ingest.Core\transactions-ingest.Core.csproj" />
   </ItemGroup>
 
 </Project>
