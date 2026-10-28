@@ -4,8 +4,8 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D1 — Solution structure (2026-10-28)
 
-- **Decision:** Thin Web API project; one class library for domain, import and EF Core; one xUnit test project. One `ITransactionSource` per source. `TimeProvider` injected everywhere time is read.
-- **Why:** Import logic must be reusable by a scheduled job without changes; the API only hosts it.
+- **Decision:** Thin Web API project; one class library for domain, import and EF Core; one xUnit test project. One `ITransactionSource` per source. `TimeProvider` injected everywhere time is read. The test project references Core, and Server for API tests through `WebApplicationFactory` (`Microsoft.AspNetCore.Mvc.Testing`).
+- **Why:** Import logic must be reusable by a scheduled job without changes; the API only hosts it. API tests exercise the real pipeline (routing, DI, 409 mapping) rather than a controller in isolation.
 
 ## D2 — Field rules and validation (2026-10-28)
 
@@ -13,7 +13,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
   - "Length < 20" means max 19 characters, enforced in validation (SQLite does not enforce lengths).
   - `CardNumber` is empty, or optional leading asterisks followed by exactly 4 digits (e.g. `1111`, `***1111`); anything else rejects the record. Non-empty values are stored as received; empty is stored as `null`. Card values are never logged.
   - `Amount` may be negative (refunds). More than 2 decimal places is rejected, not rounded.
-  - `TransactionTime` more than 5 minutes after the run's `now` is rejected.
+  - `TransactionTime` more than 5 minutes after the run's `now` is rejected. The tolerance is configurable (`Import:FutureTolerance`, default 5 minutes).
   - `SourceSystem` is set by the source, not taken from the record; a mismatching record is rejected.
 - **Why:** Accept the masked format sources actually send while never storing more than the last 4 digits; avoid hiding source errors; avoid `""`/`null` showing up as changes. A small future tolerance absorbs clock skew without letting far-future rows sit in the mutable window indefinitely.
 
@@ -21,8 +21,8 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 - **Decision:**
   - `now` is read once per run and used for every source and for finalization.
-  - A row is mutable while `now < TransactionTime + 24h`; revocation, reinstatement and finalization all use this one comparison.
-  - Apply per source: insert new keys (including late ones); update changed mutable rows with field-level audit; ignore changes to locked rows (counted, not audited); revoke Active in-window keys missing from the snapshot; reinstate Revoked in-window keys that reappear (applying any field changes).
+  - A row is mutable while `now < TransactionTime + 24h`; revocation, reinstatement and finalization all use this one comparison. The 24h window is a constant (fixed by the ticket), not config.
+  - Apply per source: insert new keys (including late ones); update changed mutable rows with field-level audit; ignore changes to locked rows (counted, not audited); revoke Active in-window keys missing from the snapshot; reinstate Revoked in-window keys that reappear with a valid record (applying any field changes). A Revoked row whose reappearing record fails validation stays Revoked (its key is present, so it is not revoked again either).
   - Finalization is a separate, time-based step after all sources: Active rows past the window become Finalized. Revoked rows stay Revoked and become locked after the window.
   - Ignored changes to finalized rows: one warning per source per run with a count; details at Debug.
 - **Why:** One boundary rule means no gap or overlap. Finalizing regardless of source health loses nothing, since revocation and corrections stop at 24h anyway. Per-row warnings would repeat every hour forever.
@@ -39,7 +39,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D5 — Idempotency (2026-10-28)
 
-- **Decision:** A second run with unchanged snapshots writes nothing to `Transactions` or `TransactionAudits`; only import-run rows are added. No `LastSeenAt` column. Values are compared after normalization.
+- **Decision:** A second run with unchanged snapshots writes nothing to `Transactions` or `TransactionAudits`; only import-run rows are added. No `LastSeenAt` column. Values are compared after normalization. "Ignored" counts only locked rows whose incoming data differs; unchanged rows count nothing, so a re-run reports all zeros.
 - **Why:** Makes idempotency a precise, testable property.
 
 ## D6 — Schema (2026-10-28)
@@ -59,7 +59,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D8 — Transaction scope and concurrency (2026-10-28)
 
-- **Decision:** One DB transaction per source; finalization in its own transaction afterwards. The import service in the library acquires an in-memory lock (behind `IImportLock`) and reports "already running" if it is held; the controller only maps that result to 409. Assumption: every caller of the import (the endpoint or a scheduled job) runs in the same process as the API.
+- **Decision:** One DB transaction per source; finalization in its own transaction afterwards. The import service in the library acquires an in-memory lock (behind `IImportLock`) and reports "already running" if it is held; the controller only maps that result to 409. Assumption: every caller of the import (the endpoint or a scheduled job) runs in the same process as the API. The service's `finally` releases the lock and marks the `ImportRun` Failed if it is still Running, so an unexpected exception can't leave a run Running forever.
 - **Why:** A failing source is isolated, and its revocations only compare against its own complete snapshot. Source keys never overlap, so cross-source atomicity buys nothing. Locking in the service means an in-process scheduled job is serialized with manual imports without any extra code. An in-memory lock can't go stale after a crash.
 - **Alternatives:** One transaction per run (one bad source blocks all); per record (partial snapshot + revocation is unsafe). DB-based lease (needed if the scheduler runs in another process; brings stale-lock handling).
 
@@ -71,7 +71,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D10 — Mock sources (2026-10-28)
 
-- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock.
+- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock. JSON numbers are mapped to `RawTransaction` strings from the raw JSON text, never through `double`.
 - **Why:** Timestamps never shift between runs, so imports stay idempotent. Editing the files demos revocation and corrections; deleting them resets.
 
 ## D11 — API shape (2026-10-28)
