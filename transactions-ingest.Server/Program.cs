@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using transactions_ingest.Core.Import;
 using transactions_ingest.Core.Import.Mock;
 using transactions_ingest.Core.Persistence;
@@ -28,7 +29,7 @@ using (var db = app.Services.GetRequiredService<IDbContextFactory<TransactionsDb
     db.Database.Migrate();
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Services.GetRequiredService<IOptions<ImportOptions>>().Value.MockSources.GenerateMissing)
 {
     app.Services.GetRequiredService<MockSourceFiles>().EnsureGenerated();
 }

@@ -162,3 +162,16 @@ Raised the SPA proxy wait to 300 seconds after a 160-second cold start.
 ```text
 Raise the SPA proxy timeout to 300 seconds. Find the real property name in the package, don't guess, and verify it in the generated spa.proxy.json. Add a short "How this was built" section after AI usage, with facts from the history only.
 ```
+
+## P15 — fix Docker profile ports, Dockerfile and container data
+
+Pinned the container's host ports so the Angular dev proxy can reach the API, and moved the database to a writable `/data` folder.
+
+```text
+In the Visual Studio container profile, the host's Angular proxy gets ECONNREFUSED because the container publishes the API on random host ports. Make Docker work properly:
+- Pin the host ports to 7103 and 5291, using the real launchSettings property names.
+- The Dockerfile restores before copying Core, and its Node may be too old for Angular 22. Fix both.
+- A Release container never generates mock files, and /app may not be writable. I lean towards a config flag for generating them, on in Development and set by the container, with the data paths pointed at a writable folder. Challenge it if there's a cleaner way.
+
+Verify with a real docker build and run, and add D14.
+```

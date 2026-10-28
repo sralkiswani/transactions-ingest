@@ -19,6 +19,11 @@
 **/node_modules
 **/npm-debug.log
 **/obj
+**/dist
+**/*.db
+**/*.db-shm
+**/*.db-wal
+transactions-ingest.Server/data
 **/secrets.dev.yaml
 **/values.dev.yaml
 LICENSE

@@ -25,6 +25,12 @@ public sealed class MockSourcesOptions
 
     /// <summary>One source per name; the name is the stored SourceSystem.</summary>
     public List<string> Names { get; set; } = [];
+
+    /// <summary>
+    /// Generate sample files for missing sources on startup. On in Development (appsettings.Development.json) and in
+    /// the container image (env var); off otherwise, so a missing file makes its source fail (D14).
+    /// </summary>
+    public bool GenerateMissing { get; set; }
 }
 
 /// <summary>Stops a source from revoking a suspicious share of its rows in one run (D4).</summary>

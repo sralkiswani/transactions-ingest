@@ -173,6 +173,35 @@ public class ApiTests
         Assert.DoesNotContain(" at ", body);
     }
 
+    [Theory]
+    [InlineData("Development", null, true)]
+    [InlineData("Production", null, false)]
+    [InlineData("Production", "true", true)]   // the container image
+    [InlineData("Development", "false", false)]
+    public async Task Mock_files_are_generated_by_the_flag_not_the_environment(string environment, string? flag, bool generated)
+    {
+        using var factory = new ApiFactory
+        {
+            EnvironmentName = environment,
+            Settings = flag is null ? [] : new() { ["Import:MockSources:GenerateMissing"] = flag },
+        };
+        factory.CreateClient();
+
+        Assert.Equal(generated ? 3 : 0, System.IO.Directory.GetFiles(factory.Directory, "*.json").Length);
+    }
+
+    [Fact]
+    public async Task Without_mock_files_the_import_fails_per_source_and_revokes_nothing()
+    {
+        using var factory = new ApiFactory { EnvironmentName = "Production" };
+        var client = factory.CreateClient();
+
+        var summary = await ImportAsync(client);
+
+        Assert.Equal(ImportRunStatus.Failed, summary.Status);
+        Assert.All(summary.Sources, s => Assert.Equal(ImportSourceStatus.Failed, s.Status));
+    }
+
     private static async Task<ImportRunSummary> ImportAsync(HttpClient client)
     {
         using var response = await client.PostAsync("/api/import", null, Ct);

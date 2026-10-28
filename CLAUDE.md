@@ -9,7 +9,7 @@ Working rules for Claude in this repo. Keep this file short; update it when the 
 - `transactions-ingest.Core/` — class library: domain entities (`Domain/`), EF Core on SQLite (`Persistence/`: DbContext, D7 converters, migrations), import logic (`Import/`, see `docs/import-plan.md`; registered with `AddTransactionsImport`), JSON-file mock sources (`Import/Mock/`).
 - `transactions-ingest.Tests/` — xUnit v3 on Microsoft.Testing.Platform (opted in via `global.json`; no VSTest packages, coverage via `Microsoft.Testing.Extensions.CodeCoverage`). Persistence and import tests use in-memory SQLite + real migrations; API tests use `WebApplicationFactory` with a temp SQLite file and source folder per test.
 - `transactions-ingest.slnx` — solution with all four projects (`.esproj` for the client).
-- Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root), runs `Migrate()` on startup, and in Development generates missing mock source files under `transactions-ingest.Server/data/sources/` (gitignored; delete to reset). API: `POST /api/import`, `GET /api/transactions`, `GET /api/transactions/{id}/audit`. The dev proxy forwards `/api`.
+- Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root), runs `Migrate()` on startup, and generates missing mock source files under `transactions-ingest.Server/data/sources/` when `Import:MockSources:GenerateMissing` is on (Development and the container image; gitignored; delete to reset). API: `POST /api/import`, `GET /api/transactions`, `GET /api/transactions/{id}/audit`. The dev proxy forwards `/api`.
 - `dotnet-ef` is a local tool (`dotnet-tools.json`, pinned to the EF Core version).
 
 ## Commands (verified 2026-10-28, Windows / PowerShell)
@@ -25,6 +25,7 @@ Run from the repo root unless noted.
 | .NET coverage | `dotnet test --solution transactions-ingest.slnx --coverage --coverage-output-format cobertura --results-directory <dir>` | ✅ writes a Cobertura XML for `transactions-ingest.Core` |
 | Add a migration | `dotnet tool restore; dotnet ef migrations add <Name> --project transactions-ingest.Core --output-dir Persistence/Migrations` | ✅ used for `InitialCreate` |
 | Run API only | `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5291'; dotnet run --project transactions-ingest.Server --no-launch-profile` | ✅ applies migrations, creates `transactions-ingest.Server/transactions.db`, generates mock source files, serves `/openapi/v1.json` |
+| Docker image (Release) | `docker build -f transactions-ingest.Server/Dockerfile -t transactions-ingest .` then `docker run --rm -p 8080:8080 transactions-ingest` | ✅ Angular + API on `http://localhost:8080`; import and list work; data in `/data` (D14) |
 | Import + list (API running) | `curl -X POST http://localhost:5291/api/import` then `curl "http://localhost:5291/api/transactions?pageSize=10"` | ✅ 200 with run summary; first page newest first |
 
 | Angular dev server against that API | `cd transactions-ingest.client; $env:ASPNETCORE_URLS='http://localhost:5291'; npm start` | ✅ serves `https://localhost:54423`; `/api` proxied to the API; table loads |

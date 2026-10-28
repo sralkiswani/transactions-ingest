@@ -17,7 +17,8 @@ The requirements are in [docs/ticket.md](docs/ticket.md).
 ## Prerequisites
 
 - .NET SDK 10 (built with 10.0.402)
-- Node.js with npm (built with Node 26.12.1, npm 12.2.1)
+- Node.js `^22.22.3`, `^24.15.0` or `>=26`, which is what Angular 22 requires, with npm (built with Node 26.12.1, npm 12.2.1)
+- Docker, only for the container image (built with Docker 28.4, Linux containers)
 - An ASP.NET Core HTTPS development certificate. `npm start` exports it automatically for the Angular dev server. To make browsers trust it, run once:
 
   ```bash
@@ -86,10 +87,46 @@ Open `https://localhost:54423`.
 ### What happens on start
 
 - The SQLite database `transactions-ingest.Server/transactions.db` is created and migrated.
-- In Development, one JSON file per source is generated under `transactions-ingest.Server/data/sources/`, with timestamps relative to that moment. Files are only generated when missing.
+- One JSON file per source is generated under `transactions-ingest.Server/data/sources/`, with timestamps relative to that moment. Files are only generated when missing.
+- Generation is controlled by `Import:MockSources:GenerateMissing`. It is on in Development and in the container image, and off otherwise; with it off, a missing file makes its source fail.
 - Both the database and the data files are gitignored.
 
 Click **Import** to load the data. A second Import reports all zeros.
+
+## Docker
+
+### Release image
+
+Build from the repository root:
+
+```bash
+docker build -f transactions-ingest.Server/Dockerfile -t transactions-ingest .
+```
+
+Run it:
+
+```bash
+docker run --rm -p 8080:8080 transactions-ingest
+```
+
+Open `http://localhost:8080`. The API and the Angular app come from one origin: the publish step builds the Angular app into the API's `wwwroot`, and the API serves it.
+
+The container:
+- runs in Production, as a non-root user;
+- keeps the database and the mock source files in `/data`, set by env vars in the Dockerfile (D14);
+- generates the mock files on first start.
+
+To keep the data when the container is removed, mount a named volume:
+
+```bash
+docker run --rm -p 8080:8080 -v transactions-data:/data transactions-ingest
+```
+
+### Visual Studio "Container (Dockerfile)" profile
+
+- **Ports:** the profile maps host port 7103 (HTTPS) and 5291 (HTTP) to the container's 8081 and 8080. The URLs are the same as the other profiles, and the Angular dev server's `/api` proxy, which falls back to `https://localhost:7103`, reaches the API in the container unchanged.
+- **Debug:** Visual Studio uses fast mode. It runs the `base` stage and mounts the project folder at `/app`, in Development. The container therefore uses the same `transactions-ingest.Server/transactions.db` and `data/sources/` as `dotnet run`. Changes made in one show up in the other. Don't run both at the same time; they also use the same ports.
+- **Release:** Visual Studio builds and runs the full image described above, with its own `/data`.
 
 ## Demo
 
@@ -157,7 +194,7 @@ CLAUDE.md                       Working rules for the coding agent
 
 ## Design decisions and assumptions
 
-The full reasoning, with alternatives considered, is in [docs/decisions.md](docs/decisions.md) (D1 to D13). How the import is put together and tested is in [docs/import-plan.md](docs/import-plan.md). In short:
+The full reasoning, with alternatives considered, is in [docs/decisions.md](docs/decisions.md) (D1 to D14). How the import is put together and tested is in [docs/import-plan.md](docs/import-plan.md). In short:
 
 - **Structure (D1):** a thin API; the import, domain and EF Core live in a class library. The import can be reused by a scheduled job without changes. Time comes from an injected `TimeProvider`.
 - **Validation (D2):** text fields are at most 19 characters ("< 20").
@@ -181,6 +218,11 @@ The full reasoning, with alternatives considered, is in [docs/decisions.md](docs
 - **Transactions and concurrency (D8):** one DB transaction per source. An in-process lock inside `ImportService` makes a concurrent import return 409. A run that ends unexpectedly is marked Failed.
 - **Mock sources (D10):** JSON files generated once, so timestamps don't drift between runs. JSON numbers are read from their raw text, never through `double`.
 - **API and UI (D11, D13):** server-side paging and filters. The UI is one NgModule component using signals and plain CSS, with a card layout on narrow screens.
+- **Containers (D14):**
+  - mock-file generation is a config flag, not an environment check;
+  - the image keeps its database and source files in a writable `/data`;
+  - the image builds Angular with Node 24;
+  - the Visual Studio container profile uses the same host ports as the other profiles.
 
 ## Known limitations
 
@@ -190,6 +232,7 @@ The full reasoning, with alternatives considered, is in [docs/decisions.md](docs
 - **Very large amounts.** Amounts are JSON numbers, so values above about 90 trillion would lose precision in the browser.
 - **Angular tests aren't in VS Test Explorer.** Visual Studio's Angular test adapter only supports Karma, and its Vitest adapter can't compile Angular components. Run them with `npx ng test`.
 - **SPA proxy cold start.** The first `npm start` can be slow; one cold start took about 160 seconds. The SPA proxy waits up to 300 seconds. If a start ever takes longer, the proxy logs "Unable to connect to the SPA development server", but the app still comes up; refresh the page.
+- **HTTP only in the container.** The Release image serves plain HTTP on port 8080; there is no certificate for 8081 outside Visual Studio.
 - **No authentication or authorization.**
 
 ## AI usage
@@ -237,3 +280,4 @@ The main corrections:
 - **P12 – end-to-end UI check.** The API and the Angular dev server were run together, and the table was confirmed to load through the `/api` proxy. Amounts always show 2 decimals, and the mock data matches the ticket's sample.
 - **P13 – clean-clone check.** The repository was cloned into a temp folder and the README followed exactly: build, all tests, and the app. The README was corrected where it was wrong.
 - **P14 – the real setting, not a guess.** A cold first start took about 160 seconds, past the SPA proxy's 120-second default. The wait was raised to 300 seconds with the property name found in the package (`SpaProxyTimeoutInSeconds`), and checked in the generated `spa.proxy.json`.
+- **P15 – Docker, checked with a real build.** The Visual Studio container profile published the API on random host ports, so the Angular proxy got ECONNREFUSED; the ports are now pinned to 7103 and 5291. The Dockerfile restored before copying Core and installed Node 20, too old for Angular 22; both were fixed. Mock-file generation became a config flag, and the container keeps its data in a writable `/data` folder (D14). The image was then built and run.

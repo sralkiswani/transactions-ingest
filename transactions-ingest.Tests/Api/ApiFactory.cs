@@ -32,6 +32,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public Action<IServiceCollection>? ConfigureServices { get; init; }
 
+    /// <summary>Extra configuration values, applied over appsettings.</summary>
+    public Dictionary<string, string> Settings { get; init; } = [];
+
     public string DatabasePath => Path.Combine(Directory, "test.db");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -40,6 +43,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("ConnectionStrings:Transactions", $"Data Source={DatabasePath}");
         builder.UseSetting("Import:MockSources:Directory", Directory);
+        foreach (var (key, value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<TimeProvider>(Time);
