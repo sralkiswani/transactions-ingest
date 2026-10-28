@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="transactions-ingest.client/transactions-ingest.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="transactions-ingest.Server/transactions-ingest.Server.csproj" />
+</Solution>
