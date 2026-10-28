@@ -1,6 +1,41 @@
 # Transactions Ingest
 
-Imports card transaction snapshots from three sources (Store Uptown, Store Downtown, Online) into SQLite and shows them in an Angular table.
+Imports card transaction snapshots from three sources (Store Uptown, Store Downtown, Online) into SQLite and shows them in an Angular table. Each import inserts new transactions, updates changed ones with a field-level audit trail, and marks transactions **Revoked** when they disappear from their source within 24 hours. Older ones are **Finalized** and never change again. Running the same import twice changes nothing.
+
+## Quick start
+
+You only need Docker (Docker Desktop on Windows or macOS):
+
+```bash
+docker compose up --build
+```
+
+1. Wait for "Now listening on: http://[::]:8080". The first build takes a few minutes.
+2. Open http://localhost:8080 and click **Import**. Ten transactions appear, two of them already Finalized.
+
+Then change a source and import again. In a second terminal, raise the price of Store Uptown's Wireless Mouse:
+
+```bash
+docker compose exec app sed -i 's/24.99/29.99/' /data/sources/store-uptown.json
+```
+
+Click **Import** again. Store Uptown reports **Updated 1**; click the Wireless Mouse row to see the audit entry (Amount 24.99 → 29.99). More things to try are in [Demo](#demo).
+
+Stop it and delete the container and its data volume (the built image stays, so the next start is quick):
+
+```bash
+docker compose down -v
+```
+
+## Where to look
+
+- [ReconciliationPlanner.cs](transactions-ingest.Core/Import/ReconciliationPlanner.cs) decides every insert, update, revocation and reinstatement. It's a pure function, so the rules are readable and testable without a database.
+- [ImportService.cs](transactions-ingest.Core/Import/ImportService.cs) runs one import: it holds the lock, reads the clock once, isolates each source in its own DB transaction, and never leaves a run stuck in Running.
+- [D3 and D4 in the decisions log](docs/decisions.md#d3--statuses-and-the-24h-window-2026-10-28) explain the single 24h rule and why a failed, partial or ambiguous snapshot can never revoke data.
+- [TwentyFourHourBoundaryTests.cs](transactions-ingest.Tests/Import/TwentyFourHourBoundaryTests.cs) pins the edge: a row exactly 24h old is locked, and one tick younger is still mutable.
+- [How this was built](#how-this-was-built) covers the prompts, the corrections made to the AI's output, and the planted bugs that proved the tests catch real mistakes.
+
+## What it does
 
 Each import compares every source's current snapshot with what is stored:
 
@@ -15,6 +50,8 @@ Running the same import twice changes nothing. Imports run on demand through `PO
 The requirements are in [docs/ticket.md](docs/ticket.md).
 
 ## Prerequisites
+
+The [Quick start](#quick-start) needs only Docker. To build, test and run from source:
 
 - .NET SDK 10 (built with 10.0.402)
 - Node.js `^22.22.3`, `^24.15.0` or `>=26`, which is what Angular 22 requires, with npm (built with Node 26.12.1, npm 12.2.1)
@@ -97,7 +134,7 @@ Click **Import** to load the data. A second Import reports all zeros.
 
 ### Release image
 
-Build from the repository root:
+[compose.yaml](compose.yaml) builds this image and mounts the named volume `transactions-data` at `/data`; see [Quick start](#quick-start). To build and run it without Compose, from the repository root:
 
 ```bash
 docker build -f transactions-ingest.Server/Dockerfile -t transactions-ingest .
@@ -281,3 +318,4 @@ The main corrections:
 - **P13 – clean-clone check.** The repository was cloned into a temp folder and the README followed exactly: build, all tests, and the app. The README was corrected where it was wrong.
 - **P14 – the real setting, not a guess.** A cold first start took about 160 seconds, past the SPA proxy's 120-second default. The wait was raised to 300 seconds with the property name found in the package (`SpaProxyTimeoutInSeconds`), and checked in the generated `spa.proxy.json`.
 - **P15 – Docker, checked with a real build.** The Visual Studio container profile published the API on random host ports, so the Angular proxy got ECONNREFUSED; the ports are now pinned to 7103 and 5291. The Dockerfile restored before copying Core and installed Node 20, too old for Angular 22; both were fixed. Mock-file generation became a config flag, and the container keeps its data in a writable `/data` folder (D14). The image was then built and run.
+- **P16 – one command to start.** `compose.yaml` serves the Release image on `localhost:8080` with a named volume, and the README opens with a Docker-only quick start and a "Where to look" list. Compose was checked from a clean state.

@@ -1,0 +1,17 @@
+# Builds the Release image (transactions-ingest.Server/Dockerfile) and serves the API and the Angular app
+# on http://localhost:8080. The database and mock source files live in the named volume (D14).
+#   docker compose up --build      start
+#   docker compose down -v         stop and delete the data
+services:
+  app:
+    build:
+      context: .
+      dockerfile: transactions-ingest.Server/Dockerfile
+    image: transactions-ingest
+    ports:
+      - "8080:8080"
+    volumes:
+      - transactions-data:/data
+
+volumes:
+  transactions-data:

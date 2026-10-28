@@ -175,3 +175,11 @@ In the Visual Studio container profile, the host's Angular proxy gets ECONNREFUS
 
 Verify with a real docker build and run, and add D14.
 ```
+
+## P16 — add compose quick start and reviewer guide to README
+
+Made `docker compose up --build` the one-command start.
+
+```text
+Make the README easy for a first-time reader. Add a compose.yaml that serves the Release image on localhost:8080 with a named volume. Open the README with what it does, a Docker-only quick start with one demo edit, and a "Where to look" list of at most 5 links. Verify compose from a clean state.
+```

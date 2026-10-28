@@ -25,6 +25,7 @@ Run from the repo root unless noted.
 | .NET coverage | `dotnet test --solution transactions-ingest.slnx --coverage --coverage-output-format cobertura --results-directory <dir>` | ✅ writes a Cobertura XML for `transactions-ingest.Core` |
 | Add a migration | `dotnet tool restore; dotnet ef migrations add <Name> --project transactions-ingest.Core --output-dir Persistence/Migrations` | ✅ used for `InitialCreate` |
 | Run API only | `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5291'; dotnet run --project transactions-ingest.Server --no-launch-profile` | ✅ applies migrations, creates `transactions-ingest.Server/transactions.db`, generates mock source files, serves `/openapi/v1.json` |
+| Docker Compose (quick start) | `docker compose up --build`, then `docker compose exec app sed -i 's/24.99/29.99/' /data/sources/store-uptown.json`; `docker compose down -v` | ✅ page loads on `http://localhost:8080`; Import works; the edit shows as Updated 1 with an audit entry; `down -v` removes container, network and volume (image stays) |
 | Docker image (Release) | `docker build -f transactions-ingest.Server/Dockerfile -t transactions-ingest .` then `docker run --rm -p 8080:8080 transactions-ingest` | ✅ Angular + API on `http://localhost:8080`; import and list work; data in `/data` (D14) |
 | Import + list (API running) | `curl -X POST http://localhost:5291/api/import` then `curl "http://localhost:5291/api/transactions?pageSize=10"` | ✅ 200 with run summary; first page newest first |
 
