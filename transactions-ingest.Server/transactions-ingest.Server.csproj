@@ -10,6 +10,8 @@
     <SpaRoot>..\transactions-ingest.client</SpaRoot>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:54423</SpaProxyServerUrl>
+    <!-- A cold first `npm start` has taken ~160s; the package default is 120. -->
+    <SpaProxyTimeoutInSeconds>300</SpaProxyTimeoutInSeconds>
   </PropertyGroup>
 
   <ItemGroup>

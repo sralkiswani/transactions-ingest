@@ -29,7 +29,7 @@ Run from the repo root unless noted.
 
 | Angular dev server against that API | `cd transactions-ingest.client; $env:ASPNETCORE_URLS='http://localhost:5291'; npm start` | ✅ serves `https://localhost:54423`; `/api` proxied to the API; table loads |
 
-`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts with the API; start it separately as above. `ASPNETCORE_URLS` tells `proxy.conf.js` where the API is. The `https` launch profile (`dotnet run --project transactions-ingest.Server --launch-profile https`) starts the API on `https://localhost:7103` and `npm start` via the SPA proxy; `/` redirects to `https://localhost:54423` (verified; a cold first start took ~160s and exceeded the proxy's 120s wait, a warm start 14s).
+`--no-launch-profile` skips the SPA proxy, so no Angular dev server starts with the API; start it separately as above. `ASPNETCORE_URLS` tells `proxy.conf.js` where the API is. The `https` launch profile (`dotnet run --project transactions-ingest.Server --launch-profile https`) starts the API on `https://localhost:7103` and `npm start` via the SPA proxy; `/` redirects to `https://localhost:54423` (verified; a cold first start took ~160s, a warm start 14s). The proxy's wait is `SpaProxyTimeoutInSeconds` = 300 in the Server csproj (package default 120); it ends up as `MaxTimeoutInSeconds` in `bin/.../spa.proxy.json`.
 
 Dev ports (verified: `http://localhost:5291` and `https://localhost:54423`): API `https://localhost:7103` / `http://localhost:5291`, Angular dev server `https://localhost:54423`.
 

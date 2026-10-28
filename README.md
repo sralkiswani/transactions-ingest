@@ -54,7 +54,7 @@ cd transactions-ingest.client; npm ci; npm run build; npx ng test --watch=false
 2. Set `transactions-ingest.Server` as the startup project and pick the **https** launch profile.
 3. Press F5. The API starts on `https://localhost:7103` and, through the SPA proxy, starts `npm start` for the Angular app on `https://localhost:54423`. The browser is redirected there once it is up.
 
-   `npm start` runs in a separate console window. On a cold start the Angular build can take longer than the SPA proxy's 120-second wait. The proxy then logs "Unable to connect to the SPA development server", but the app still comes up; refresh the page.
+   `npm start` runs in a separate console window. The SPA proxy waits up to 300 seconds for it, set by `SpaProxyTimeoutInSeconds` in the Server project. The package default of 120 seconds was shorter than one observed cold start of about 160 seconds.
 4. Run the tests with the CLI commands above. Test Explorer has not been checked with the .NET tests, which run on Microsoft.Testing.Platform. The Angular tests don't appear there (see [Known limitations](#known-limitations)).
 
 ## Run
@@ -189,7 +189,7 @@ The full reasoning, with alternatives considered, is in [docs/decisions.md](docs
 - **Source filter list is hard-coded in the client.** The UI's source filter lists the three ticket sources; the API has no endpoint that lists sources.
 - **Very large amounts.** Amounts are JSON numbers, so values above about 90 trillion would lose precision in the browser.
 - **Angular tests aren't in VS Test Explorer.** Visual Studio's Angular test adapter only supports Karma, and its Vitest adapter can't compile Angular components. Run them with `npx ng test`.
-- **SPA proxy cold start.** The first `npm start` can exceed the SPA proxy's 120-second wait. The app still starts; refresh the page.
+- **SPA proxy cold start.** The first `npm start` can be slow; one cold start took about 160 seconds. The SPA proxy waits up to 300 seconds. If a start ever takes longer, the proxy logs "Unable to connect to the SPA development server", but the app still comes up; refresh the page.
 - **No authentication or authorization.**
 
 ## AI usage
@@ -217,3 +217,23 @@ The main corrections:
 | JSON numbers must not pass through `double`; they are read as raw text. | P9, D10 |
 | Amounts lost their 2-decimal formatting (`18.5` instead of `18.50`). Fixed in the cents converter. | P12, D7 |
 | Source names must be unique; startup now fails on a duplicate, instead of the import crashing mid-run. | P11 |
+
+## How this was built
+
+- **P1 – rules before code.** [CLAUDE.md](CLAUDE.md) set the working rules: separate what was verified from what was assumed, list only commands that were actually run, keep steps small, and log decisions. Template problems were reported rather than silently fixed; P5 fixed them.
+- **P2 – design and risks before code.** The ticket's risks were written down first:
+  - a failing source must not look like an empty snapshot;
+  - mock timestamps must not drift between runs;
+  - a rejected record must still count as present;
+  - EF Core on SQLite stores decimals as text and loses the UTC kind on dates.
+
+  The schema, the transaction scope and migrations were then proposed with options and tradeoffs, still without code. P3 accepted them as D1–D11.
+- **P4 – corrections to the design.** The `CardNumber` rule was rejecting the ticket's own sample. The revocation guard got a minimum number of candidates and an off switch. The lock moved into the import service.
+- **P8 – plan before implementation.** The import was planned first: its classes, where each D-rule lives, and a one-line test list covering D2–D5, D8 and the 24h boundary. The window cutoff is computed in C#, never in SQL. The same step removed unused test packages and fixed coverage.
+- **P9 – corrections to the plan.** "Ignored" counts only real changes. A run left Running is marked Failed. JSON numbers are never read through `double`. The import was then built in three steps, P9–P11.
+- **P9 – bug injection, pure logic.** Three bugs were planted on purpose: the 24h comparison changed from `>` to `>=`, rejected keys counted as absent, and the guard tripping at exactly 50%. Each had to make tests fail before being reverted.
+- **P10 – bug injection, database and service.** Three more: `UpdatedAt` written on every row, a source that throws treated as an empty snapshot, and the lock not released after an exception.
+- **P11 – API.** Startup fails on duplicate source names. The API tests run on their own databases. The 409 was swapped for a 200 to show a test catches it. The server was run for real and the import summary and first page were checked.
+- **P12 – end-to-end UI check.** The API and the Angular dev server were run together, and the table was confirmed to load through the `/api` proxy. Amounts always show 2 decimals, and the mock data matches the ticket's sample.
+- **P13 – clean-clone check.** The repository was cloned into a temp folder and the README followed exactly: build, all tests, and the app. The README was corrected where it was wrong.
+- **P14 – the real setting, not a guess.** A cold first start took about 160 seconds, past the SPA proxy's 120-second default. The wait was raised to 300 seconds with the property name found in the package (`SpaProxyTimeoutInSeconds`), and checked in the generated `spa.proxy.json`.

@@ -154,3 +154,11 @@ Write the README: what it does, prerequisites, build, test and run from Visual S
 
 Delete the template CHANGELOGs, check the https profile starts both apps, and verify the README from a fresh clone.
 ```
+
+## P14 — raise SPA proxy timeout and add build-process summary
+
+Raised the SPA proxy wait to 300 seconds after a 160-second cold start.
+
+```text
+Raise the SPA proxy timeout to 300 seconds. Find the real property name in the package, don't guess, and verify it in the generated spa.proxy.json. Add a short "How this was built" section after AI usage, with facts from the history only.
+```
