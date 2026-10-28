@@ -78,3 +78,9 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 - **Decision:** `POST /api/import` runs synchronously and returns the run summary (409 if one is running). `GET /api/transactions` is paged server-side from the start.
 - **Why:** Mock data is small; a 202-and-poll flow is unnecessary now.
+
+## D12 — .NET test framework (2026-10-28)
+
+- **Decision:** xunit.v3 on Microsoft.Testing.Platform, opted in via `test.runner` in `global.json`. Run with `dotnet test --solution transactions-ingest.slnx`. Plain xUnit asserts; no FluentAssertions.
+- **Why:** New project; xUnit v2 is maintenance-only. On the .NET 10 SDK, xunit.v3 4.x requires the Microsoft.Testing.Platform opt-in. FluentAssertions v8 changed its license.
+- **Alternatives:** xUnit v2 on VSTest (template default, no `global.json`, but a dead-end version).
