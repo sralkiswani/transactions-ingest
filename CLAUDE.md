@@ -7,7 +7,7 @@ Working rules for Claude in this repo. Keep this file short; update it when the 
 - `transactions-ingest.Server/` — ASP.NET Core Web API, .NET 10 (`net10.0`), controllers + OpenAPI, SPA proxy to the client in Development.
 - `transactions-ingest.client/` — Angular 22, NgModule-based (`standalone: false` in schematics), `@angular/build` builders, npm.
 - `transactions-ingest.Core/` — class library: domain entities (`Domain/`), EF Core on SQLite (`Persistence/`: DbContext, D7 converters, migrations).
-- `transactions-ingest.Tests/` — xUnit v3 on Microsoft.Testing.Platform (opted in via `global.json`). Persistence tests use in-memory SQLite + real migrations.
+- `transactions-ingest.Tests/` — xUnit v3 on Microsoft.Testing.Platform (opted in via `global.json`; no VSTest packages, coverage via `Microsoft.Testing.Extensions.CodeCoverage`). Persistence tests use in-memory SQLite + real migrations.
 - `transactions-ingest.slnx` — solution with all four projects (`.esproj` for the client).
 - Server reads `ConnectionStrings:Transactions` (relative paths resolve against the content root) and runs `Migrate()` on startup. Client is a bare placeholder; the dev proxy forwards `/api`.
 - `dotnet-ef` is a local tool (`dotnet-tools.json`, pinned to the EF Core version).
@@ -22,6 +22,7 @@ Run from the repo root unless noted.
 | Build client | `cd transactions-ingest.client; npm run build` | ✅ passes |
 | Client tests (Vitest + jsdom) | `cd transactions-ingest.client; npx ng test --watch=false` | ✅ passes (~1 min, mostly jsdom startup) |
 | .NET tests | `dotnet test --solution transactions-ingest.slnx` | ✅ passes (MTP syntax; the positional `dotnet test <sln>` form is rejected) |
+| .NET coverage | `dotnet test --solution transactions-ingest.slnx --coverage --coverage-output-format cobertura --results-directory <dir>` | ✅ writes a Cobertura XML for `transactions-ingest.Core` |
 | Add a migration | `dotnet tool restore; dotnet ef migrations add <Name> --project transactions-ingest.Core --output-dir Persistence/Migrations` | ✅ used for `InitialCreate` |
 | Run API only | `$env:ASPNETCORE_ENVIRONMENT='Development'; $env:ASPNETCORE_URLS='http://localhost:5291'; dotnet run --project transactions-ingest.Server --no-launch-profile` | ✅ applies migrations, creates `transactions-ingest.Server/transactions.db`, serves `/openapi/v1.json` |
 
@@ -34,7 +35,7 @@ Dev ports (from config; only `http://localhost:5291` verified): API `https://loc
 - Client tests don't appear in VS Test Explorer. The `.esproj` has no `JavaScriptTestFramework`: VS's Angular adapter is Karma-only, and its Vitest adapter runs plain Vitest without the Angular compiler. Run them with `ng test`.
 - `npm install` warns that install scripts were blocked for `@parcel/watcher`, `esbuild`, `lmdb`, `msgpackr-extract` (npm `allowScripts`). Builds and tests pass regardless.
 - `HttpClientModule` in `app-module.ts` is deprecated in favor of `provideHttpClient()`.
-- With `Logging:LogLevel:Default=Information`, EF Core logs every SQL command at startup and per request.
+- Running with only an `http://` URL logs a warning from `UseHttpsRedirection` ("Failed to determine the https port"). Harmless for the API-only run.
 - EF Core wraps exceptions from value converters in `DbUpdateException`; the D7 guards surface as its `InnerException`.
 - `CHANGELOG.md` files in both projects describe the original template setup (weather, Karma, jest-editor-support).
 - `git` is not on PATH in this shell; use VS's bundled git: `C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\cmd\git.exe`.
@@ -47,6 +48,8 @@ Dev ports (from config; only `http://localhost:5291` verified): API `https://loc
 - **Small, scoped steps.** Out-of-scope things worth changing get flagged, not changed.
 - **Decisions:** when a design decision is settled, add a brief entry to `docs/decisions.md` (date, decision, why, alternatives considered).
 - **Prompt numbering:** the user numbers prompts (P1, P2, …). Prefix each reply with the same number.
+- **No suggested-reply buttons.** Put open questions in a numbered list; the user answers in a numbered prompt.
+- **Reply footer.** End every reply with these sections: **Verified** (what was run and the result), **Assumed**, **Staged** (files), **Open questions**.
 
 ## Git
 

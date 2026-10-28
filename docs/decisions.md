@@ -81,6 +81,6 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D12 — .NET test framework (2026-10-28)
 
-- **Decision:** xunit.v3 on Microsoft.Testing.Platform, opted in via `test.runner` in `global.json`. Run with `dotnet test --solution transactions-ingest.slnx`. Plain xUnit asserts; no FluentAssertions.
-- **Why:** New project; xUnit v2 is maintenance-only. On the .NET 10 SDK, xunit.v3 4.x requires the Microsoft.Testing.Platform opt-in. FluentAssertions v8 changed its license.
-- **Alternatives:** xUnit v2 on VSTest (template default, no `global.json`, but a dead-end version).
+- **Decision:** xunit.v3 on Microsoft.Testing.Platform (MTP), opted in via `test.runner` in `global.json`. Run with `dotnet test --solution transactions-ingest.slnx`. Plain xUnit asserts; no FluentAssertions. The test project references only `xunit.v3` and `Microsoft.Testing.Extensions.CodeCoverage`, sets `OutputType=Exe`, and has no VSTest packages (`Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio`, `coverlet.collector`). Coverage: `--coverage`.
+- **Why:** New project; xUnit v2 is maintenance-only. On the .NET 10 SDK, xunit.v3 4.x requires the MTP opt-in. xunit.v3 brings MTP itself; the VSTest packages were unused, and `coverlet.collector` is a VSTest collector that does not run under MTP (`--coverage` failed with it). FluentAssertions v8 changed its license.
+- **Alternatives:** xUnit v2 on VSTest (template default, no `global.json`, but a dead-end version). `coverlet.MTP` for coverage (also works; Microsoft's extension chosen as first-party and VS-integrated).
