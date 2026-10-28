@@ -11,10 +11,11 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 - **Decision:**
   - "Length < 20" means max 19 characters, enforced in validation (SQLite does not enforce lengths).
-  - `CardNumber` is empty or exactly 4 digits; anything else rejects the record. Empty is stored as `null`. Card values are never logged.
-  - `Amount` with more than 2 decimal places is rejected, not rounded.
+  - `CardNumber` is empty, or optional leading asterisks followed by exactly 4 digits (e.g. `1111`, `***1111`); anything else rejects the record. Non-empty values are stored as received; empty is stored as `null`. Card values are never logged.
+  - `Amount` may be negative (refunds). More than 2 decimal places is rejected, not rounded.
+  - `TransactionTime` more than 5 minutes after the run's `now` is rejected.
   - `SourceSystem` is set by the source, not taken from the record; a mismatching record is rejected.
-- **Why:** Avoid storing full card numbers; avoid hiding source errors; avoid `""`/`null` showing up as changes.
+- **Why:** Accept the masked format sources actually send while never storing more than the last 4 digits; avoid hiding source errors; avoid `""`/`null` showing up as changes. A small future tolerance absorbs clock skew without letting far-future rows sit in the mutable window indefinitely.
 
 ## D3 — Statuses and the 24h window (2026-10-28)
 
@@ -33,7 +34,7 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
   - The full snapshot is fetched before the source's DB transaction opens. A source that throws fails that source only; nothing is written or revoked.
   - Any record with a parseable key counts as present, even if its other fields fail validation.
   - If any key is unparseable or duplicated in a snapshot, valid upserts are applied but revocation is skipped for that source this run, and an error is logged.
-  - Configurable guard: if a run would revoke more than a set percentage of a source's Active in-window rows, that source fails with no changes.
+  - Configurable guard: if a run would revoke more than a set percentage of a source's Active in-window rows, that source fails with no changes. The percentage only applies once there are at least a minimum number of Active in-window rows (candidates); below that the guard does not trip. The guard can be switched off in config. Enabled flag, minimum candidates and percentage all live in `appsettings.json`.
 - **Why:** A failed, truncated or ambiguous snapshot must never look like mass removals.
 
 ## D5 — Idempotency (2026-10-28)
@@ -58,8 +59,8 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D8 — Transaction scope and concurrency (2026-10-28)
 
-- **Decision:** One DB transaction per source; finalization in its own transaction afterwards. Concurrent imports get 409 via an in-memory lock behind `IImportLock`. Assumption: the hourly scheduler calls `POST /api/import`.
-- **Why:** A failing source is isolated, and its revocations only compare against its own complete snapshot. Source keys never overlap, so cross-source atomicity buys nothing. An in-memory lock can't go stale after a crash.
+- **Decision:** One DB transaction per source; finalization in its own transaction afterwards. The import service in the library acquires an in-memory lock (behind `IImportLock`) and reports "already running" if it is held; the controller only maps that result to 409. Assumption: every caller of the import (the endpoint or a scheduled job) runs in the same process as the API.
+- **Why:** A failing source is isolated, and its revocations only compare against its own complete snapshot. Source keys never overlap, so cross-source atomicity buys nothing. Locking in the service means an in-process scheduled job is serialized with manual imports without any extra code. An in-memory lock can't go stale after a crash.
 - **Alternatives:** One transaction per run (one bad source blocks all); per record (partial snapshot + revocation is unsafe). DB-based lease (needed if the scheduler runs in another process; brings stale-lock handling).
 
 ## D9 — Migrations (2026-10-28)
