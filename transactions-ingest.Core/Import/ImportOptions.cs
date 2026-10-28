@@ -12,6 +12,19 @@ public sealed class ImportOptions
     public TimeSpan FutureTolerance { get; set; } = TimeSpan.FromMinutes(5);
 
     public RevocationGuardOptions RevocationGuard { get; set; } = new();
+
+    public MockSourcesOptions MockSources { get; set; } = new();
+}
+
+/// <summary>File-backed mock sources (D10): one JSON file per source name.</summary>
+public sealed class MockSourcesOptions
+{
+    /// <summary>Folder holding the files; relative paths resolve against the content root.</summary>
+    [Required]
+    public string Directory { get; set; } = "data/sources";
+
+    /// <summary>One source per name; the name is the stored SourceSystem.</summary>
+    public List<string> Names { get; set; } = [];
 }
 
 /// <summary>Stops a source from revoking a suspicious share of its rows in one run (D4).</summary>

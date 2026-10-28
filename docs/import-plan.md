@@ -125,4 +125,4 @@ The cutoff is computed in C# and compared against the column; no date arithmetic
 
 1. ✅ Pure parts: `RunClock`, `ImportOptions`, `TransactionValidator`, `SnapshotParser`, `ReconciliationPlanner`, `RevocationGuard`, with unit tests.
 2. ✅ `PlanApplier`, `Finalizer`, `ImportService`, lock, with SQLite integration tests.
-3. DI registration, config, `ImportController`, mock sources, API tests.
+3. ✅ DI registration, config, `ImportController`, mock sources, API tests.

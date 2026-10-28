@@ -71,12 +71,12 @@ Short records of settled decisions. Newest at the bottom. See [ticket.md](ticket
 
 ## D10 — Mock sources (2026-10-28)
 
-- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock. JSON numbers are mapped to `RawTransaction` strings from the raw JSON text, never through `double`.
+- **Decision:** Each mock source reads a JSON file with absolute UTC timestamps (`data/sources/<source>.json`). In Development, missing files are generated once relative to now and written to disk. Unit tests use in-code fake sources with a fake clock. JSON numbers are mapped to `RawTransaction` strings from the raw JSON text, never through `double`. File shape: a JSON array of objects with the ticket's field names (property names matched case-insensitively; unknown properties ignored). Sources and the folder come from `Import:MockSources` (`Names`, `Directory`); file name is a slug of the source name (`Store Uptown` → `store-uptown.json`). Generated files live under `transactions-ingest.Server/data/` and are gitignored. A missing file outside Development makes that source fail.
 - **Why:** Timestamps never shift between runs, so imports stay idempotent. Editing the files demos revocation and corrections; deleting them resets.
 
 ## D11 — API shape (2026-10-28)
 
-- **Decision:** `POST /api/import` runs synchronously and returns the run summary (409 if one is running). `GET /api/transactions` is paged server-side from the start.
+- **Decision:** `POST /api/import` runs synchronously and returns the run summary (409 ProblemDetails if one is running); it is cancelled by app shutdown, not by the client disconnecting. `GET /api/transactions` is paged server-side: `page` (default 1), `pageSize` (default 25, max 100), optional `source` and `status`, sorted by `TransactionTime` descending with `SourceSystem`, `TransactionId` as tie-breakers. Out-of-range or unknown values return 400 ValidationProblemDetails; an empty value means no filter. `GET /api/transactions/{id}/audit` returns the audit trail oldest first, 404 for an unknown id. All errors are ProblemDetails; outside Development the exception handler includes no exception details. Enums are serialized as strings.
 - **Why:** Mock data is small; a 202-and-poll flow is unnecessary now.
 
 ## D12 — .NET test framework (2026-10-28)

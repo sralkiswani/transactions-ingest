@@ -1,34 +1,45 @@
+using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using transactions_ingest.Core.Import;
+using transactions_ingest.Core.Import.Mock;
 using transactions_ingest.Core.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-var connectionString = builder.Configuration.GetConnectionString("Transactions")
-    ?? throw new InvalidOperationException("Connection string 'Transactions' is not configured.");
+// Resolved when the first context is created, so configuration added by tests is seen.
+builder.Services.AddDbContextFactory<TransactionsDbContext>((sp, options) =>
+    options.UseSqlite(SqliteConnectionString(sp.GetRequiredService<IConfiguration>(), sp.GetRequiredService<IHostEnvironment>())));
+builder.Services.AddTransactionsImport(builder.Configuration);
 
-// A relative SQLite path is resolved against the content root, not the process working directory.
-var sqlite = new SqliteConnectionStringBuilder(connectionString);
-if (sqlite.DataSource != ":memory:" && !Path.IsPathRooted(sqlite.DataSource))
-{
-    sqlite.DataSource = Path.Combine(builder.Environment.ContentRootPath, sqlite.DataSource);
-}
-
-builder.Services.AddDbContext<TransactionsDbContext>(options => options.UseSqlite(sqlite.ToString()));
-
-builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 // Single instance for now, so migrating on startup is safe (D9).
-using (var scope = app.Services.CreateScope())
+using (var db = app.Services.GetRequiredService<IDbContextFactory<TransactionsDbContext>>().CreateDbContext())
 {
-    scope.ServiceProvider.GetRequiredService<TransactionsDbContext>().Database.Migrate();
+    db.Database.Migrate();
 }
+
+if (app.Environment.IsDevelopment())
+{
+    app.Services.GetRequiredService<MockSourceFiles>().EnsureGenerated();
+}
+
+// Errors are ProblemDetails. Outside Development the handler omits exception details; in Development
+// the developer exception page (on by default) includes them.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler();
+}
+app.UseStatusCodePages();
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
@@ -48,3 +59,20 @@ app.MapControllers();
 app.MapFallbackToFile("/index.html");
 
 app.Run();
+
+// A relative SQLite path is resolved against the content root, not the process working directory.
+static string SqliteConnectionString(IConfiguration configuration, IHostEnvironment environment)
+{
+    var connectionString = configuration.GetConnectionString("Transactions")
+        ?? throw new InvalidOperationException("Connection string 'Transactions' is not configured.");
+
+    var sqlite = new SqliteConnectionStringBuilder(connectionString);
+    if (sqlite.DataSource != ":memory:" && !Path.IsPathRooted(sqlite.DataSource))
+    {
+        sqlite.DataSource = Path.Combine(environment.ContentRootPath, sqlite.DataSource);
+    }
+    return sqlite.ToString();
+}
+
+/// <summary>Exposed for WebApplicationFactory in the API tests.</summary>
+public partial class Program;
